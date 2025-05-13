@@ -50,10 +50,10 @@ const uploadPdfFileMiddleware = (
         fs.unlinkSync(req.file.path);
       }
       console.error("Upload error:", err);
-      return res.status(400).json({ error: err.message });
+      return res.status(400).json({ message: err.message });
     }
     if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
+      return res.status(400).json({ message: "No file uploaded" });
     }
     next();
   });

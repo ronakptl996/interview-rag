@@ -32,3 +32,33 @@ export const getInterview = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const startInterview = async (req: Request, res: Response) => {
+  try {
+    const { interviewId } = req.params;
+
+    if (!interviewId) {
+      throw new Error("Interview ID is required");
+    }
+
+    const interview = await Interview.findById(interviewId);
+
+    if (!interview) {
+      throw new Error("Interview not found");
+    }
+
+    interview.isStarted = true;
+    await interview.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Interview started successfully",
+      data: interview,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};

@@ -88,24 +88,27 @@ export const askQuestionFromPdf = async (
   res: Response
 ): Promise<any> => {
   try {
-    const { fileId } = req.body;
+    const { interviewId } = req.body;
 
-    const file = await File.findById(fileId);
+    const interview = await Interview.findById(interviewId);
 
-    if (!file) {
+    if (!interview) {
       return res.status(404).json({
         success: false,
-        message: "File not found",
+        message: "Interview not found",
       });
     }
 
-    const previousChats =
-      (await Chat.find({ fileId }).select("query response")) || [];
+    const fileId = interview.fileId!;
 
-    const question = await getNextQuestion(fileId, previousChats);
+    const previousChats =
+      (await Chat.find({ fileId, interviewId }).select("query response")) || [];
+
+    const question = await getNextQuestion(fileId.toString(), previousChats);
 
     const chat = await Chat.create({
       fileId,
+      interviewId,
       query: question,
     });
 
@@ -114,7 +117,7 @@ export const askQuestionFromPdf = async (
       message: "Question asked successfully",
       data: {
         question,
-        chatId: chat._id,
+        chatId: chat._id.toString(),
       },
     });
   } catch (error: any) {
