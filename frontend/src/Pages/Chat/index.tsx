@@ -4,19 +4,20 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router";
 
 const Chat = () => {
-  const [startInterview, setStartInterview] = useState(true);
+  const [startInterview, setStartInterview] = useState(false);
   const [isInterviewAlreadyStarted, setIsInterviewAlreadyStarted] =
     useState(true);
-  const [chatId, setChatId] = useState("");
 
   const [isRecording, setIsRecording] = useState(false);
   const [startAnswering, setStartAnswering] = useState(false);
   const [botSpeaking, setBotSpeaking] = useState(false);
   const [userSpeaking, setUserSpeaking] = useState(false);
-  const [recognizedText, setRecognizedText] = useState("");
 
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<any>(null); // Ref for speech recognition
+  const chatIdRef = useRef(""); // Ref for chatId
+  const recognizedTextRef = useRef(""); // Ref for recognized text
   const keepListening = useRef(true);
+  const pendingSubmit = useRef(false);
 
   const { interviewId } = useParams();
 
@@ -24,6 +25,7 @@ const Chat = () => {
 
   const askQuestionHandler = async () => {
     try {
+      recognizedTextRef.current = "";
       const response = await fetch(
         `http://localhost:3000/api/chat/askQuestion`,
         {
@@ -38,17 +40,16 @@ const Chat = () => {
       );
 
       const data = await response.json();
-      console.log("QUESTION >>>", data);
       if (!data.success) {
         throw new Error(data.message);
       }
 
-      setChatId(data.data.chatId);
+      // setChatId(data.data.chatId);
+      chatIdRef.current = data.data.chatId;
       const utterance = new SpeechSynthesisUtterance(data.data.question);
       utterance.rate = 0.6;
       utterance.pitch = 1.5;
       utterance.voice = speechSynthesis.getVoices()[0];
-      console.log(utterance);
       speechSynthesis.speak(utterance);
       utterance.onstart = () => {
         setBotSpeaking(true);
@@ -65,14 +66,16 @@ const Chat = () => {
 
   const submitAnswerHandler = async () => {
     try {
+      const answer = recognizedTextRef.current.trim();
+      const currentChatId = chatIdRef.current;
       const response = await fetch(`http://localhost:3000/api/chat/answer`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          chatId,
-          answer: recognizedText,
+          chatId: currentChatId,
+          answer,
         }),
       });
 
@@ -82,8 +85,6 @@ const Chat = () => {
         throw new Error(data.message);
       }
 
-      setRecognizedText("");
-      setChatId("");
       await askQuestionHandler();
     } catch (error: any) {
       console.log(error);
@@ -101,7 +102,6 @@ const Chat = () => {
       );
 
       const data = await response.json();
-      console.log("data >>>", data);
 
       if (!data.success) {
         throw new Error(data.message);
@@ -110,6 +110,26 @@ const Chat = () => {
       setStartInterview(true);
       setIsInterviewAlreadyStarted(data.data.isStarted);
       await askQuestionHandler();
+    } catch (error: any) {
+      console.log(error);
+      toast.error(error.message || "Something went wrong");
+    }
+  };
+
+  const endInterviewHandler = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/interview/end/${interviewId}`
+      );
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message);
+      }
+
+      toast.success("Interview ended successfully");
+      navigate("/");
     } catch (error: any) {
       console.log(error);
       toast.error(error.message || "Something went wrong");
@@ -135,34 +155,25 @@ const Chat = () => {
 
     recognition.onstart = () => {
       setUserSpeaking(true);
-      console.log(" >>>> User started speaking");
     };
-
-    // recognition.onsoundstart = () => {
-    //   setUserSpeaking(true);
-    // };
-
-    // recognition.onsoundend = () => {
-    //   setUserSpeaking(false);
-    // };
 
     recognition.onresult = (event: any) => {
-      // setUserSpeaking(false);
       let result = event.results[event.results.length - 1][0].transcript;
-      console.log(" >>>> Recognized text:", result);
-      setRecognizedText((prev) => prev + result);
+      // Accumulate the answer
+      recognizedTextRef.current += result;
     };
 
-    recognition.onend = () => {
+    recognition.onend = async () => {
       setUserSpeaking(false);
-      console.log(" >>>> Recognition ended");
-      // Restart if you want to keep listening
-      if (keepListening.current) {
+      if (pendingSubmit.current) {
+        pendingSubmit.current = false;
+        await submitAnswerHandler();
+      } else if (keepListening.current) {
         recognition.start();
       }
     };
 
-    recognition.onerror = (event: any) => {
+    recognition.onerror = () => {
       setUserSpeaking(false);
       console.error("Error occurred while recognizing speech");
     };
@@ -170,7 +181,6 @@ const Chat = () => {
     recognitionRef.current = recognition;
 
     return () => {
-      //  clearTimeout(speakingTimeout);
       recognition.stop();
     };
   }, []);
@@ -183,7 +193,6 @@ const Chat = () => {
         );
         const data = await response.json();
 
-        console.log("data >>>", data);
         if (!data.success) {
           throw new Error(data.message);
         }
@@ -205,10 +214,11 @@ const Chat = () => {
     fetchInterview();
   }, [interviewId]);
 
+  // REMOVE FALSE
   if (!startInterview) {
     return (
       <div className="bg-black h-screen relative">
-        <div className="flex flex-col justify-center items-center h-full gap-10">
+        <div className="flex flex-col justify-center items-center h-full gap-4">
           <div className="text-white text-2xl font-bold">
             Interview not started
           </div>
@@ -226,11 +236,20 @@ const Chat = () => {
   }
 
   return (
-    <div className="bg-black h-screen relative">
+    <div className="bg-[#181719] h-screen relative">
+      <div className="absolute top-10 right-20 flex items-center gap-2">
+        <button
+          className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 cursor-pointer"
+          onClick={endInterviewHandler}
+        >
+          End Interview
+        </button>
+      </div>
+
       <div className="flex justify-center items-center h-full gap-10">
         <div
-          className={`w-1/4 h-1/3 bg-red-500 rounded-lg border-4 ${
-            userSpeaking ? "border-green-500" : "border-white"
+          className={`w-1/4 h-1/3 bg-[#1e1e1e] rounded-lg border-2 box-shadow-lg ${
+            userSpeaking ? "border-green-500" : "border-[#ffffff61]"
           }`}
         >
           <div className="flex flex-col items-center justify-center h-full">
@@ -245,8 +264,8 @@ const Chat = () => {
           </div>
         </div>
         <div
-          className={`w-1/4 h-1/3 bg-blue-500 rounded-lg border-4 ${
-            botSpeaking ? "border-green-500" : "border-white"
+          className={`w-1/4 h-1/3 bg-[#1e1e1e] rounded-lg border-2 box-shadow-lg ${
+            botSpeaking ? "border-green-500" : "border-[#ffffff61]"
           }`}
         >
           <div className="flex flex-col items-center justify-center h-full">
@@ -285,8 +304,6 @@ const Chat = () => {
               hover:animate-none
             `}
             onClick={async () => {
-              console.log("startAnswering >>>", startAnswering);
-              console.log("isRecording >>>", isRecording);
               if (startAnswering) {
                 setStartAnswering(false);
                 setIsRecording(true);
@@ -297,12 +314,11 @@ const Chat = () => {
               } else if (isRecording) {
                 setIsRecording(false);
                 setStartAnswering(false);
-                console.log(" >>>> recognizedText else >>>", recognizedText);
                 keepListening.current = false;
+                pendingSubmit.current = true;
                 if (recognitionRef.current) {
                   recognitionRef.current.stop();
                 }
-                await submitAnswerHandler();
               }
             }}
           >

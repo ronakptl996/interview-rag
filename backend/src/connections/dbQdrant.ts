@@ -180,3 +180,57 @@ export const getNextQuestion = async (fileId: string, previousChats: any) => {
 
   return question;
 };
+
+export const getAnalysis = async (chats: any[]) => {
+  // Build a transcript for the LLM
+  try {
+    const qaPairs = chats
+      .map((c, i) => `Q${i + 1}: ${c.query}\nA${i + 1}: ${c.response || ""}`)
+      .join("\n");
+
+    const analysisPrompt = `
+      You are an expert technical interviewer and evaluator. Analyze the following interview transcript as a whole, and provide an overall assessment for the candidate on these metrics: Correctness, Clarity, Relevance, Detail, Efficiency, Creativity, Communication.
+  
+      For each metric, provide:
+      - A score from 1 to 5 (5 is best)
+      - A brief comment justifying the score
+  
+      Here is the interview transcript:
+      ${qaPairs}
+  
+      Return your analysis as a JSON object in this format:
+      {
+        "Correctness": { "score": 4, "comment": "..." },
+        "Clarity": { "score": 5, "comment": "..." },
+        "Relevance": { "score": 5, "comment": "..." },
+        "Detail": { "score": 3, "comment": "..." },
+        "Efficiency": { "score": 4, "comment": "..." },
+        "Creativity": { "score": 3, "comment": "..." },
+        "Communication": { "score": 5, "comment": "..." }
+      }
+    `;
+
+    const response = await genai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: analysisPrompt,
+      config: {
+        systemInstruction: "You are an expert interview analyst.",
+      },
+    });
+
+    if (!response.text) {
+      throw new Error("No response");
+    }
+
+    const match =
+      response.text.match(/```json\s*([\s\S]*?)```/i) ||
+      response.text.match(/```([\s\S]*?)```/i);
+
+    let jsonString = match ? match[1] : response.text;
+
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
