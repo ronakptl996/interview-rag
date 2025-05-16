@@ -66,7 +66,12 @@ const Chat = () => {
 
   const submitAnswerHandler = async () => {
     try {
+      console.log(
+        "????????????????? submitAnswerHandler =========================="
+      );
+      console.log("recognizedTextRef.current >>>", recognizedTextRef.current);
       const answer = recognizedTextRef.current.trim();
+      console.log("answer ================================ >>>", answer);
       const currentChatId = chatIdRef.current;
       const response = await fetch(`http://localhost:3000/api/chat/answer`, {
         method: "POST",
@@ -159,11 +164,24 @@ const Chat = () => {
 
     recognition.onresult = (event: any) => {
       let result = event.results[event.results.length - 1][0].transcript;
+      console.log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+      console.log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+      console.log(
+        "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ METHOD  ONRESULT ================================"
+      );
+      console.log("result ================================ >>>", event.results);
+      console.log("===============================================");
       // Accumulate the answer
       recognizedTextRef.current += result;
     };
 
     recognition.onend = async () => {
+      console.log(
+        "recognition.onend >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+      );
+      console.log("keepListening.current >>>>>", keepListening.current);
+      console.log("pendingSubmit.current >>>", pendingSubmit.current);
+      console.log("ENDDDDDDDDDDDDDDDDDD ===============");
       setUserSpeaking(false);
       if (pendingSubmit.current) {
         pendingSubmit.current = false;
@@ -217,66 +235,125 @@ const Chat = () => {
   // REMOVE FALSE
   if (!startInterview) {
     return (
-      <div className="bg-black h-screen relative">
-        <div className="flex flex-col justify-center items-center h-full gap-4">
-          <div className="text-white text-2xl font-bold">
-            Interview not started
-          </div>
-          <button
-            className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-300 cursor-pointer"
-            onClick={startInterviewHandler}
-          >
-            {isInterviewAlreadyStarted
-              ? "Continue Interview"
-              : "Start Interview"}
-          </button>
+      <div className="bg-slate-900 min-h-screen flex flex-col justify-center items-center">
+        <div className="text-slate-100 text-2xl font-bold mb-6">
+          Interview not started
         </div>
+        <button
+          className="bg-slate-700 text-slate-100 px-6 py-3 rounded-lg hover:bg-slate-600 transition-all duration-300 shadow-md hover:shadow-lg"
+          onClick={startInterviewHandler}
+        >
+          {isInterviewAlreadyStarted ? "Continue Interview" : "Start Interview"}
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#181719] h-screen relative">
-      <div className="absolute top-10 right-20 flex items-center gap-2">
+    <div className="bg-slate-900 min-h-screen relative">
+      <div className="absolute top-10 right-10 flex items-center gap-2">
         <button
-          className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 cursor-pointer"
+          className="bg-red-600 text-slate-100 px-6 py-2 rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md hover:shadow-lg"
           onClick={endInterviewHandler}
         >
           End Interview
         </button>
       </div>
 
-      <div className="flex justify-center items-center h-full gap-10">
+      <div className="flex justify-center items-center h-[70vh] gap-10">
+        {/* User Card */}
         <div
-          className={`w-1/4 h-1/3 bg-[#1e1e1e] rounded-lg border-2 box-shadow-lg ${
-            userSpeaking ? "border-green-500" : "border-[#ffffff61]"
+          className={`w-80 h-96 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl border border-slate-700/50 shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 flex flex-col items-center justify-center relative overflow-hidden group ${
+            userSpeaking ? "ring-2 ring-emerald-500" : ""
           }`}
         >
-          <div className="flex flex-col items-center justify-center h-full">
-            <div className="h-28 w-28 rounded-full bg-white">
-              <img
-                src="/user.png"
-                className="w-full h-full rounded-full"
-                alt="resume"
-              />
+          {/* Background Pattern */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-700/20 to-transparent opacity-50"></div>
+
+          {/* User Avatar Container */}
+          <div className="relative z-10">
+            <div className="h-32 w-32 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 p-1 shadow-lg group-hover:shadow-emerald-500/20 transition-all duration-300">
+              <div className="h-full w-full rounded-full overflow-hidden border-2 border-slate-600/50">
+                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <img
+                    src="https://api.dicebear.com/9.x/thumbs/svg?faceOffsetY=-15,15"
+                    className="w-full h-full object-cover"
+                    alt="user"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="text-white text-2xl font-bold mt-4">User</div>
+            {userSpeaking && (
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-emerald-500/20 backdrop-blur-sm px-3 py-1 rounded-full text-emerald-400 text-sm">
+                Speaking...
+              </div>
+            )}
+          </div>
+
+          {/* User Info */}
+          <div className="mt-6 text-center">
+            <h3 className="text-slate-100 text-2xl font-bold">User</h3>
+            <p className="text-slate-400 text-sm mt-1">Interview Participant</p>
+          </div>
+
+          {/* Status Indicator */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
+            <div
+              className={`h-2 w-2 rounded-full ${
+                userSpeaking ? "bg-emerald-500 animate-pulse" : "bg-slate-600"
+              }`}
+            ></div>
+            <span className="text-slate-400 text-xs">
+              {userSpeaking ? "Active" : "Ready"}
+            </span>
           </div>
         </div>
+
+        {/* Bot Card */}
         <div
-          className={`w-1/4 h-1/3 bg-[#1e1e1e] rounded-lg border-2 box-shadow-lg ${
-            botSpeaking ? "border-green-500" : "border-[#ffffff61]"
+          className={`w-80 h-96 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl border border-slate-700/50 shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 flex flex-col items-center justify-center relative overflow-hidden group ${
+            botSpeaking ? "ring-2 ring-emerald-500" : ""
           }`}
         >
-          <div className="flex flex-col items-center justify-center h-full">
-            <div className="h-28 w-28 rounded-full bg-white">
-              <img
-                src="/bot.jpg"
-                className="w-full h-full rounded-full"
-                alt="resume"
-              />
+          {/* Background Pattern */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-700/20 to-transparent opacity-50"></div>
+
+          {/* Bot Avatar Container */}
+          <div className="relative z-10">
+            <div className="h-32 w-32 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 p-1 shadow-lg group-hover:shadow-emerald-500/20 transition-all duration-300">
+              <div className="h-full w-full rounded-full overflow-hidden border-2 border-slate-600/50">
+                <div className="w-full h-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                  <img
+                    src="https://api.dicebear.com/7.x/bottts/svg?seed=ai&backgroundColor=65c9ff"
+                    className="w-full h-full object-cover"
+                    alt="bot"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="text-white text-2xl font-bold mt-4">Bot</div>
+            {botSpeaking && (
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-emerald-500/20 backdrop-blur-sm px-3 py-1 rounded-full text-emerald-400 text-sm">
+                Speaking...
+              </div>
+            )}
+          </div>
+
+          {/* Bot Info */}
+          <div className="mt-6 text-center">
+            <h3 className="text-slate-100 text-2xl font-bold">AI Assistant</h3>
+            <p className="text-slate-400 text-sm mt-1">Interview Conductor</p>
+          </div>
+
+          {/* Status Indicator */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
+            <div
+              className={`h-2 w-2 rounded-full ${
+                botSpeaking ? "bg-emerald-500 animate-pulse" : "bg-slate-600"
+              }`}
+            ></div>
+            <span className="text-slate-400 text-xs">
+              {botSpeaking ? "Active" : "Ready"}
+            </span>
           </div>
         </div>
       </div>
@@ -284,7 +361,7 @@ const Chat = () => {
       <div className="absolute bottom-20 left-0 right-0">
         <div className="relative flex items-center justify-center">
           <div
-            className={`absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-3 py-1 rounded shadow z-10 whitespace-nowrap ${
+            className={`absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-slate-100 text-xs px-3 py-1 rounded-lg shadow-lg z-10 whitespace-nowrap border border-slate-700 ${
               isRecording || startAnswering ? "block" : "hidden"
             }`}
           >
@@ -293,15 +370,18 @@ const Chat = () => {
           <div
             className={`
               flex items-center justify-center
-              w-[42px] h-[42px] rounded-full bg-green-800 
-              ${startAnswering && "bg-green-500"}
+              w-[48px] h-[48px] rounded-full
+              ${startAnswering && "bg-emerald-500"}
               ${isRecording && "bg-red-600"}
+              ${!startAnswering && !isRecording && "bg-slate-700"}
               cursor-pointer
-              shadow-[0_0_0_rgba(204,169,44,0.4)]
+              shadow-lg
               ${isRecording && "animate-pulse-recording"}
               ${startAnswering && "animate-pulse-answer"}
-              transition
-              hover:animate-none
+              transition-all
+              duration-300
+              hover:scale-105
+              hover:shadow-emerald-500/20
             `}
             onClick={async () => {
               if (startAnswering) {
@@ -324,7 +404,7 @@ const Chat = () => {
           >
             <img
               src="/microphone.png"
-              className="w-4 h-4 rounded-full"
+              className="w-5 h-5 rounded-full"
               alt="bot"
             />
           </div>

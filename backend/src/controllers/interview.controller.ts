@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import Interview from "../models/interview.model";
+import Analysis from "../models/analysis.model";
 import Chat from "../models/chat.model";
 import { getAnalysis } from "../connections/dbQdrant";
 
@@ -87,6 +88,18 @@ export const endInterview = async (req: Request, res: Response) => {
     interview.endTime = Date.now();
     await interview.save();
 
+    const chats = await Chat.find({
+      interviewId,
+      fileId: interview.fileId,
+    });
+
+    const analysis = await getAnalysis(chats);
+
+    await Analysis.create({
+      interviewId,
+      analysis,
+    });
+
     res.status(200).json({
       success: true,
       message: "Interview ended successfully",
@@ -99,7 +112,8 @@ export const endInterview = async (req: Request, res: Response) => {
   }
 };
 
-export const analysisInterview = async (req: Request, res: Response) => {
+// Get analysis of an interview
+export const getAnalysisInterview = async (req: Request, res: Response) => {
   try {
     const { interviewId } = req.params;
 
@@ -107,23 +121,40 @@ export const analysisInterview = async (req: Request, res: Response) => {
       throw new Error("Interview ID is required");
     }
 
-    const interview = await Interview.findById(interviewId);
+    const interview = await Interview.findOne({
+      _id: interviewId,
+      isCompleted: true,
+    });
 
     if (!interview) {
       throw new Error("Interview not found");
     }
 
-    const chats = await Chat.find({
+    const analysis = await Analysis.findOne({
       interviewId,
-      fileId: interview.fileId,
     });
-
-    const analysis = await getAnalysis(chats);
 
     res.status(200).json({
       success: true,
       message: "Interview analysis fetched successfully",
       data: analysis,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+export const getInterviews = async (req: Request, res: Response) => {
+  try {
+    const interviews = await Interview.find();
+
+    res.status(200).json({
+      success: true,
+      message: "Interviews fetched successfully",
+      data: interviews,
     });
   } catch (error: any) {
     res.status(500).json({

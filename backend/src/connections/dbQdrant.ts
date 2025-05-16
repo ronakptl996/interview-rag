@@ -110,7 +110,6 @@ export const getNextQuestion = async (fileId: string, previousChats: any) => {
 
   let systemPrompt;
 
-  console.log("previousChats >>>", previousChats.length);
   // Build Q&A history string for the prompt
   const qaHistoryString = previousChats
     .map(
@@ -158,10 +157,54 @@ export const getNextQuestion = async (fileId: string, previousChats: any) => {
       Here is the conversation history so far:
       ${qaHistoryString}
 
-      Based on the resume and past conversation, ask a **relevant technical question** related to the candidate’s experience, skills, or projects. Focus on technologies that are mentioned in the resume.
+      Based on the resume and past conversation:
+      1. First, identify technologies mentioned in the resume (e.g., JavaScript, React, AWS, Git, etc.)
+      2. Then identify any specific projects mentioned in the resume
+      3. Assess the candidate's experience level with each technology
+      4. Generate a **single, concise technical question** following these rules:
+
+      STRICT QUESTION ORDER:
+      1. MUST start with technology-specific questions first
+      2. Only after ALL technology questions are asked, then ask project-specific questions
+      3. For each technology, follow this order:
+         - Start with basic questions
+         - Then intermediate questions
+         - Then advanced questions
+         - Only move to next technology after completing all levels of current technology
+
+      Technology progression by level:
+        JavaScript:
+          Basic: "What is hoisting in JavaScript?", "What are closures?", "What is the event loop?", "What is the difference between == and ==="
+          Intermediate: "How does async/await work?", "What are promises?", "What is the difference between let, const, and var?", "What is the spread operator?"
+          Advanced: "How would you implement a debounce function?", "What is the prototype chain?", "How does 'this' work in JavaScript?", "What is the difference between call, apply, and bind?"
+
+        React:
+          Basic: "What is React?", "What is JSX?", "What are React Hooks?", "What is state in React?", "What are props?"
+          Intermediate: "How do you handle side effects in React?", "What is the difference between useState and useReducer?", "What is the Context API?", "What is the difference between controlled and uncontrolled components?"
+          Advanced: "How would you optimize React performance?", "Explain React's virtual DOM", "What are React's design patterns?", "How would you implement code splitting?"
+
+        Node.js:
+          Basic: "What is Node.js?", "What is npm?", "What is the package.json file?", "What is the difference between dependencies and devDependencies?"
+          Intermediate: "How do you handle errors in Node.js?", "What is middleware?", "How do you manage environment variables?", "What is the difference between process.nextTick and setImmediate?"
+          Advanced: "How would you scale a Node.js application?", "What is the event loop in Node.js?", "How do you handle memory leaks?", "What is the difference between cluster and worker threads?"
+
+        [Add more technologies as user mention in the resume]
+
+      Project-specific questions (ONLY after all technology questions are asked):
+        - "What was the most challenging part of building [Project Name]?"
+        - "How did you handle [specific feature] in [Project Name]?"
+        - "What architecture decisions did you make in [Project Name] and why?"
+        - "How did you ensure scalability in [Project Name]?"
+        - "What testing strategies did you implement in [Project Name]?"
       
-      Do not ask the same question twice.
-      Ask only **one question at a time**, and maintain a professional tone.
+      Rules:
+        - Ask **only one question at a time**
+        - Keep the tone professional but friendly
+        - Rephrase to avoid repeating earlier questions
+        - NEVER ask project questions before technology questions
+        - Check conversation history to avoid repeating questions
+
+      Also you can counter the candidate's answer with a question if the candidate's answer is not detailed enough.
     `;
   }
 

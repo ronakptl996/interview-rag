@@ -3,6 +3,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Home from "./Pages/Home";
 import Chat from "./Pages/Chat";
+import Analysis from "./Pages/Analysis";
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/chat/:interviewId" element={<Chat />} />
+        <Route path="/analysis/:interviewId" element={<Analysis />} />
       </Routes>
     </BrowserRouter>
   );

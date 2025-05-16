@@ -32,6 +32,7 @@ export const uploadPdfFile = async (
     const interview = await Interview.create({
       fileId: file._id,
       startTime: Date.now(),
+      name: req.body.name,
     });
 
     return res.status(200).json({

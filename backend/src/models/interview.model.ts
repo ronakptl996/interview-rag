@@ -7,6 +7,7 @@ const interviewSchema = new mongoose.Schema(
     endTime: { type: Number, default: null },
     isStarted: { type: Boolean, default: false },
     isCompleted: { type: Boolean, default: false },
+    name: { type: String, default: null },
   },
   { timestamps: true }
 );
