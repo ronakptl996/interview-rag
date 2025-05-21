@@ -5,11 +5,12 @@ import {
   answerQuestion,
   askQuestionFromPdf,
 } from "../controllers/chat.controller";
+import { authUser } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-router.post("/upload", uploadPdfFileMiddleware, uploadPdfFile);
-router.post("/askQuestion", askQuestionFromPdf);
-router.post("/answer", answerQuestion);
+router.post("/upload", authUser, uploadPdfFileMiddleware, uploadPdfFile);
+router.post("/askQuestion", authUser, askQuestionFromPdf);
+router.post("/answer", authUser, answerQuestion);
 
 export default router;

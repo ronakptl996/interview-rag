@@ -56,47 +56,6 @@ export const uploadPDFToQdrant = async (filePath: string, fileId: string) => {
   }
 };
 
-export const queryToGemini = async (query: string, fileId: string) => {
-  try {
-    const collectionExists = await qdrantClient.collectionExists(fileId);
-
-    if (!collectionExists.exists) {
-      throw new Error("Collection does not exist");
-    }
-
-    const vectorStore = new QdrantVectorStore(embeddings, {
-      url: process.env.QDRANT_URL,
-      collectionName: fileId,
-    });
-
-    const searchResults = await vectorStore.similaritySearch(query);
-    const context = searchResults
-      .map((result) => result.pageContent)
-      .join("\n");
-
-    const systemPrompt = `You are a helpful AI assistant. that will answer the user query using the provided context from the pdf file.
-		  Context: ${context}
-			You can understand the user query and give the answer from the context very professionally.`;
-
-    const response = await genai.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: query,
-      config: {
-        systemInstruction: systemPrompt,
-      },
-    });
-
-    if (!response.text) {
-      throw new Error("No response");
-    }
-
-    return response.text;
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-};
-
 export const getNextQuestion = async (fileId: string, previousChats: any) => {
   const data = await qdrantClient.scroll(fileId, {
     with_payload: true,
@@ -132,9 +91,9 @@ export const getNextQuestion = async (fileId: string, previousChats: any) => {
       - Soft skills
 
       Here are some example rephrasings:
-      - Instead of “Tell me about yourself,” say: “I'd love to hear a bit about your path into software development — what sparked your interest?”
-      - Instead of “What is your educational background?”, try: “Can you walk me through your academic journey and what you studied?”
-      - Instead of “What are your skills?”, ask: “What kinds of problems do you enjoy solving the most in your work?”
+      - Instead of "Tell me about yourself," say: "I'd love to hear a bit about your path into software development — what sparked your interest?"
+      - Instead of "What is your educational background?", try: "Can you walk me through your academic journey and what you studied?"
+      - Instead of "What are your skills?", ask: "What kinds of problems do you enjoy solving the most in your work?"
 
       Rules:
       - Ask **only one question at a time**
@@ -235,21 +194,22 @@ export const getAnalysis = async (chats: any[]) => {
       You are an expert technical interviewer and evaluator. Analyze the following interview transcript as a whole, and provide an overall assessment for the candidate on these metrics: Correctness, Clarity, Relevance, Detail, Efficiency, Creativity, Communication.
   
       For each metric, provide:
-      - A score from 1 to 5 (5 is best)
+      - A score from 1 to 10 (10 is best)
       - A brief comment justifying the score
+      - Based on a user provided answer you can give them score and add a comment on matrics
   
       Here is the interview transcript:
       ${qaPairs}
   
       Return your analysis as a JSON object in this format:
       {
-        "Correctness": { "score": 4, "comment": "..." },
-        "Clarity": { "score": 5, "comment": "..." },
-        "Relevance": { "score": 5, "comment": "..." },
-        "Detail": { "score": 3, "comment": "..." },
-        "Efficiency": { "score": 4, "comment": "..." },
-        "Creativity": { "score": 3, "comment": "..." },
-        "Communication": { "score": 5, "comment": "..." }
+        "Correctness": { "score": 8, "comment": "..." },
+        "Clarity": { "score": 7, "comment": "..." },
+        "Relevance": { "score": 6, "comment": "..." },
+        "Detail": { "score": 8, "comment": "..." },
+        "Efficiency": { "score": 9, "comment": "..." },
+        "Creativity": { "score": 7, "comment": "..." },
+        "Communication": { "score": 8, "comment": "..." }
       }
     `;
 
@@ -276,4 +236,35 @@ export const getAnalysis = async (chats: any[]) => {
     console.error(error);
     throw error;
   }
+};
+
+export const classifyUserAnswer = async (query: string, answer: string) => {
+  const response = await genai.models.generateContent({
+    model: "gemini-1.5-flash",
+    contents: [
+      `You are monitoring an interview session.`,
+      `The interviewer asked: "${query}"`,
+      `The candidate replied: "${answer}"`,
+      `Classify the user's reply as one of the following:`,
+      `- "answer": if the user is attempting to answer the question`,
+      `- "clarification": if the user is asking to repeat, elaborate, simplify, or clarify the question`,
+      `Return only the classification label.`,
+    ],
+  });
+  const classification = response.text?.trim();
+
+  if (classification === "clarification") {
+    const clarificationPrompt = await genai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: `Please rephrase and elaborate the following question for better understanding:\n"${query}"`,
+      config: {
+        systemInstruction:
+          "Make the question clearer or more detailed without changing its core meaning.",
+      },
+    });
+
+    return clarificationPrompt.text!.trim();
+  }
+
+  return false;
 };

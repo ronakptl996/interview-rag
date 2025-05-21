@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const interviewSchema = new mongoose.Schema(
   {
     fileId: { type: mongoose.Schema.Types.ObjectId, ref: "File" },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     startTime: { type: Number, default: null },
     endTime: { type: Number, default: null },
     isStarted: { type: Boolean, default: false },

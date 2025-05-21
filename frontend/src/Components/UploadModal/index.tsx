@@ -43,7 +43,6 @@ const UploadModal = ({
   };
 
   const handleBrowseFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("handleBrowseFile >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
     e.preventDefault();
     const file = e.target.files![0];
     if (file.type !== "application/pdf") {
@@ -70,17 +69,19 @@ const UploadModal = ({
       formData.append("file", file!);
       formData.append("name", name);
 
-      const response = await fetch("http://localhost:3000/api/chat/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: formData,
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/chat/upload`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("intToken")}`,
+          },
+          body: formData,
+        }
+      );
 
       if (response.status === 401) {
-        // toast.error("Unauthorized");
-        localStorage.removeItem("token");
+        localStorage.removeItem("intToken");
         navigate("/login");
         return;
       }
@@ -193,8 +194,12 @@ const UploadModal = ({
               <div className="px-8 py-2 mt-4 sm:flex sm:flex-row-reverse rounded-b-2xl border-t border-slate-700/50">
                 <button
                   type="button"
-                  className="w-full inline-flex justify-center rounded-xl bg-slate-700 px-6 py-3 text-base font-medium text-white shadow-md hover:bg-slate-600 hover:shadow-lg transition-all duration-200 sm:ml-3 sm:w-auto"
-                  onClick={onClose}
+                  className="cursor-pointer w-full inline-flex justify-center rounded-xl bg-slate-700 px-6 py-3 text-base font-medium text-white shadow-md hover:bg-slate-600 hover:shadow-lg transition-all duration-200 sm:ml-3 sm:w-auto"
+                  onClick={() => {
+                    setFile(null);
+                    setName("");
+                    onClose();
+                  }}
                 >
                   Close
                 </button>

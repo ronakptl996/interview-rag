@@ -3,7 +3,11 @@ import { Request, Response } from "express";
 import File from "../models/file.model";
 import Chat from "../models/chat.model";
 import Interview from "../models/interview.model";
-import { uploadPDFToQdrant, getNextQuestion } from "../connections/dbQdrant";
+import {
+  uploadPDFToQdrant,
+  getNextQuestion,
+  classifyUserAnswer,
+} from "../connections/dbQdrant";
 
 export const uploadPdfFile = async (
   req: Request,
@@ -11,10 +15,21 @@ export const uploadPdfFile = async (
 ): Promise<any> => {
   try {
     const filePath = req.file!.path;
+    const { _id: userId } = req.user!;
+
+    const alreadyExistName = await Interview.findOne({
+      name: req.body.name,
+      userId,
+    });
+
+    if (alreadyExistName) {
+      throw new Error("Name is already exist!");
+    }
 
     const file = await File.create({
       name: req.file?.originalname,
       path: filePath,
+      userId,
     });
 
     await uploadPDFToQdrant(filePath, file._id.toString());
@@ -33,6 +48,7 @@ export const uploadPdfFile = async (
       fileId: file._id,
       startTime: Date.now(),
       name: req.body.name,
+      userId,
     });
 
     return res.status(200).json({
@@ -66,6 +82,16 @@ export const answerQuestion = async (
       });
     }
 
+    const response = await classifyUserAnswer(chat.query!, answer);
+
+    if (response) {
+      return res.status(200).json({
+        success: true,
+        message: "Classification the question!",
+        data: { response, chatId, repeat: true },
+      });
+    }
+
     const updatedChat = await Chat.findByIdAndUpdate(chatId, {
       response: answer,
     });
@@ -73,7 +99,7 @@ export const answerQuestion = async (
     return res.status(200).json({
       success: true,
       message: "Answer saved successfully",
-      data: updatedChat,
+      data: { ...updatedChat, repeat: false },
     });
   } catch (error: any) {
     console.log("Error while chatting ", error);

@@ -6,17 +6,18 @@ import {
   getAnalysisInterview,
   getInterviews,
 } from "../controllers/interview.controller";
+import { authUser } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-router.post("/start/:interviewId", startInterview);
-router.get("/end/:interviewId", endInterview);
-router.get("/list", getInterviews);
+router.post("/start/:interviewId", authUser, startInterview);
+router.get("/end/:interviewId", authUser, endInterview);
+router.get("/list", authUser, getInterviews);
 
 // Get analysis of an interview
-router.get("/analysis/:interviewId", getAnalysisInterview);
+router.get("/analysis/:interviewId", authUser, getAnalysisInterview);
 
 // Get interview details
-router.get("/:interviewId", getInterview);
+router.get("/:interviewId", authUser, getInterview);
 
 export default router;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router";
+import { useAuth } from "../../Context/AuthContext";
 
 const Chat = () => {
   const [startInterview, setStartInterview] = useState(false);
@@ -20,6 +21,7 @@ const Chat = () => {
   const pendingSubmit = useRef(false);
 
   const { interviewId } = useParams();
+  const { loading, setLoading } = useAuth();
 
   const navigate = useNavigate();
 
@@ -27,11 +29,12 @@ const Chat = () => {
     try {
       recognizedTextRef.current = "";
       const response = await fetch(
-        `http://localhost:3000/api/chat/askQuestion`,
+        `${import.meta.env.VITE_BACKEND_URL}/chat/askQuestion`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("intToken")}`,
           },
           body: JSON.stringify({
             interviewId,
@@ -73,21 +76,42 @@ const Chat = () => {
       const answer = recognizedTextRef.current.trim();
       console.log("answer ================================ >>>", answer);
       const currentChatId = chatIdRef.current;
-      const response = await fetch(`http://localhost:3000/api/chat/answer`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          chatId: currentChatId,
-          answer,
-        }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/chat/answer`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("intToken")}`,
+          },
+          body: JSON.stringify({
+            chatId: currentChatId,
+            answer,
+          }),
+        }
+      );
 
       const data = await response.json();
 
       if (!data.success) {
         throw new Error(data.message);
+      }
+
+      if (data.data.repeat) {
+        chatIdRef.current = data.data.chatId;
+        const utterance = new SpeechSynthesisUtterance(data.data.response);
+        utterance.rate = 0.6;
+        utterance.pitch = 1.5;
+        utterance.voice = speechSynthesis.getVoices()[0];
+        speechSynthesis.speak(utterance);
+        utterance.onstart = () => {
+          setBotSpeaking(true);
+        };
+        utterance.onend = () => {
+          setStartAnswering(true);
+          setBotSpeaking(false);
+        };
+        return;
       }
 
       await askQuestionHandler();
@@ -100,9 +124,12 @@ const Chat = () => {
   const startInterviewHandler = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3000/api/interview/start/${interviewId}`,
+        `${import.meta.env.VITE_BACKEND_URL}/interview/start/${interviewId}`,
         {
           method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("intToken")}`,
+          },
         }
       );
 
@@ -123,8 +150,14 @@ const Chat = () => {
 
   const endInterviewHandler = async () => {
     try {
+      setLoading(true);
       const response = await fetch(
-        `http://localhost:3000/api/interview/end/${interviewId}`
+        `${import.meta.env.VITE_BACKEND_URL}/interview/end/${interviewId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("intToken")}`,
+          },
+        }
       );
 
       const data = await response.json();
@@ -138,6 +171,8 @@ const Chat = () => {
     } catch (error: any) {
       console.log(error);
       toast.error(error.message || "Something went wrong");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -207,7 +242,12 @@ const Chat = () => {
     const fetchInterview = async () => {
       try {
         const response = await fetch(
-          `http://localhost:3000/api/interview/${interviewId}`
+          `${import.meta.env.VITE_BACKEND_URL}/interview/${interviewId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("intToken")}`,
+            },
+          }
         );
         const data = await response.json();
 
@@ -231,6 +271,14 @@ const Chat = () => {
     };
     fetchInterview();
   }, [interviewId]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center bg-slate-900 items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+      </div>
+    );
+  }
 
   // REMOVE FALSE
   if (!startInterview) {
